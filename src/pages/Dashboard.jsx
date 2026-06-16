@@ -1,6 +1,12 @@
 // Main dashboard — shown after wallet connects
 // Contains all 5 tabs: Predict, Resolve, Hot Takes, Grudge Report, History
 
+// Add this import at the top of Dashboard.jsx
+import { getExplorerUrl, saveLocalBlobId } from '../lib/walrus'
+
+// Inside autoSave, after setLastBlobId(blobId):
+saveLocalBlobId(account.address, blobId)
+
 import { useState } from 'react'
 import { ConnectButton, useCurrentAccount } from '@mysten/dapp-kit'
 import { useWalrus }    from '../hooks/useWalrus'

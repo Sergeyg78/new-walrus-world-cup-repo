@@ -81,14 +81,41 @@ export async function readBlob(blobId) {
   }
   const res = await fetch(`${MAINNET_AGGREGATOR}/v1/blobs/${blobId.trim()}`)
   if (!res.ok) throw new Error(`Blob not found (${res.status})`)
-  const text = await res.text()
+  
+  // Try text first, then fall back to arrayBuffer for binary responses
   try {
-    return JSON.parse(text)
+    const text = await res.text()
+    // Strip any BOM or null bytes that Walrus may prepend
+    const clean = text.replace(/^\uFEFF/, '').replace(/\0/g, '').trim()
+    return JSON.parse(clean)
   } catch {
-    throw new Error('Blob content is not valid JSON')
+    // Try reading as binary and decoding
+    const buf   = await res.arrayBuffer()
+    const bytes = new Uint8Array(buf)
+    // Find where JSON starts (skip any binary header bytes)
+    let start = 0
+    for (let i = 0; i < bytes.length; i++) {
+      if (bytes[i] === 0x7B || bytes[i] === 0x5B) { // { or [
+        start = i
+        break
+      }
+    }
+    const text = new TextDecoder().decode(bytes.slice(start))
+    return JSON.parse(text)
   }
 }
 
-export function getExplorerUrl(blobId) {
-  return `${WALRUS_EXPLORER}/${blobId}`
+// ── Local cache: remember last blob ID per wallet ─────────────────────────────
+export function saveLocalBlobId(address, blobId) {
+  try {
+    const key  = `wc2026_blob_${address}`
+    localStorage.setItem(key, blobId)
+  } catch { /* ignore */ }
+}
+
+export function loadLocalBlobId(address) {
+  try {
+    const key = `wc2026_blob_${address}`
+    return localStorage.getItem(key) || null
+  } catch { return null }
 }

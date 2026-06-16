@@ -20,11 +20,13 @@ export default async function handler(req, res) {
 
   // ── Validate API key ──────────────────────────────────────────────────────
   const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY
-  if (!ANTHROPIC_KEY) {
-    return res.status(500).json({
-      error: 'ANTHROPIC_API_KEY not set in environment variables'
-    })
-  }
+if (!ANTHROPIC_KEY) {
+  console.error('[roast.js] ANTHROPIC_API_KEY is not set')
+  return res.status(500).json({
+    error: 'ANTHROPIC_API_KEY not configured on server',
+    hint:  'Add it in Vercel project settings under Environment Variables'
+  })
+}
 
   // ── Parse body ────────────────────────────────────────────────────────────
   const {
