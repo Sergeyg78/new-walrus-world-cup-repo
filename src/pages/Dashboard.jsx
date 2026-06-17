@@ -32,7 +32,7 @@ export function Dashboard({ appState, setAppState, blobChain, setBlobChain }) {
       const updated = { ...newState, blobChain: chain, lastUpdated: new Date().toISOString() }
       setBlobChain(chain)
       setLastBlobId(blobId)
-      saveLocalBlobId(account.address, blobId)
+      if (account?.address) saveLocalBlobId(account.address, blobId)
       setAppState(updated)
       toast.success(`✅ Saved to Walrus Mainnet!\nBlob: ${blobId.slice(0, 12)}...`, { id: toastId, duration: 6000 })
       return updated
