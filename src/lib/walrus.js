@@ -119,3 +119,7 @@ export function loadLocalBlobId(address) {
     return localStorage.getItem(key) || null
   } catch { return null }
 }
+export function getExplorerUrl(blobId) {
+  return `https://walruscan.com/mainnet/blob/${blobId}`
+}
+
