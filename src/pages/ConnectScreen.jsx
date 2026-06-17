@@ -206,31 +206,3 @@ export function ConnectScreen({ setAppState, setBlobChain }) {
     </div>
   )
 }
-
-// Add this inside ConnectScreen, after the account check
-import { loadLocalBlobId } from '../lib/walrus'
-
-// Inside the component:
-const savedBlobId = account ? loadLocalBlobId(account.address) : null
-
-// Add this just above the Start Fresh Session button:
-{account && savedBlobId && (
-  <div className="connect-box" style={{ margin: '0 16px', background: 'rgba(105,240,174,.08)', border: '1px solid rgba(105,240,174,.3)' }}>
-    <h2>🔄 Resume Last Session</h2>
-    <p style={{ fontSize: '.82rem', color: '#a5d6a7' }}>
-      Found your last saved session for this wallet.
-    </p>
-    <button
-      className="btn-correct"
-      onClick={() => {
-        setBlobId(savedBlobId)
-        handleLoad()
-      }}
-    >
-      ⚡ Resume Session
-    </button>
-    <code style={{ fontSize: '.7rem', color: '#546e7a', wordBreak: 'break-all' }}>
-      {savedBlobId.slice(0, 20)}...
-    </code>
-  </div>
-)}
