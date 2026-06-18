@@ -19,11 +19,11 @@ export default async function handler(req, res) {
   }
 
   // ── Validate API key ──────────────────────────────────────────────────────
-  const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY
+  const ANTHROPIC_KEY = process.env.OPENROUTER_API_KEY
 if (!ANTHROPIC_KEY) {
-  console.error('[roast.js] ANTHROPIC_API_KEY is not set')
+  console.error('[roast.js] OPENROUTER_API_KEY is not set')
   return res.status(500).json({
-    error: 'ANTHROPIC_API_KEY not configured on server',
+    error: 'OPENROUTER_API_KEY not configured on server',
     hint:  'Add it in Vercel project settings under Environment Variables'
   })
 }
@@ -135,20 +135,23 @@ ${failures}`
 
   // ── Call Claude API ───────────────────────────────────────────────────────
   try {
-    const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type':      'application/json',
-        'x-api-key':         ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model:      'claude-haiku-4-5',
-        max_tokens: 250,
-        system:     systemPrompt,
-        messages:   [{ role: 'user', content: userPrompt }],
-      }),
-    })
+    const claudeRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  method: 'POST',
+  headers: {
+    'Content-Type':  'application/json',
+    'Authorization': `Bearer ${ANTHROPIC_KEY}`,
+    'HTTP-Referer':  'https://new-walrus-world-cup-repo.vercel.app',
+    'X-Title':       'WC2026 Grudge Agent',
+  },
+  body: JSON.stringify({
+    model:       'anthropic/claude-haiku-4-5',
+    max_tokens:  250,
+    messages: [
+      { role: 'system', content: systemPrompt },
+      { role: 'user',   content: userPrompt   },
+    ],
+  }),
+})
 
     if (!claudeRes.ok) {
       const errText = await claudeRes.text()
@@ -160,7 +163,7 @@ ${failures}`
     }
 
     const claudeData = await claudeRes.json()
-    const text = claudeData.content?.[0]?.text
+const text = claudeData.choices?.[0]?.message?.content
 
     if (!text) {
       return res.status(502).json({ error: 'Empty response from Claude' })
