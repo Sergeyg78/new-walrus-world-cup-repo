@@ -388,70 +388,91 @@ function LiveScoresTab({
   const [autoResolving, setAutoResolving] = useState(false)
   const [resolved, setResolved] = useState([])
 
-  // ── Auto-resolve pending predictions against real results ─────────────────
   async function autoResolve() {
     const pending = appState.predictions.filter(p => p.status === 'pending')
     if (pending.length === 0) {
       toast('No pending predictions to resolve!')
       return
     }
+    if (finished.length === 0) {
+      toast.error('No completed matches loaded — click Refresh Scores first')
+      return
+    }
 
     setAutoResolving(true)
-    let currentState = { ...appState }
     const resolvedNames = []
+    let currentState = { ...appState, predictions: [...appState.predictions] }
 
     for (const pred of pending) {
-      const match = findResult(pred.prediction + ' ' + pred.match)
+      const searchText = `${pred.prediction} ${pred.match}`.toLowerCase()
+      const match = finished.find(m => {
+        const home = (m.home || '').toLowerCase()
+        const away = (m.away || '').toLowerCase()
+        return searchText.includes(home) || searchText.includes(away)
+      })
       if (!match) continue
 
-      const homeWon = match.homeGoals > match.awayGoals
-      const awayWon = match.awayGoals > match.homeGoals
-      const predLower = pred.prediction.toLowerCase()
+      const predLower  = pred.prediction.toLowerCase()
+      const homeLower  = (match.home || '').toLowerCase()
+      const awayLower  = (match.away || '').toLowerCase()
+      const homeWon    = match.homeGoals > match.awayGoals
+      const awayWon    = match.awayGoals > match.homeGoals
+      const isDraw     = match.homeGoals === match.awayGoals
 
-      // Simple win/draw detection
       let correct = false
       if (predLower.includes('draw') || predLower.includes('tie')) {
-        correct = match.homeGoals === match.awayGoals
-      } else if (predLower.includes(match.home?.toLowerCase())) {
+        correct = isDraw
+      } else if (predLower.includes(homeLower)) {
         correct = homeWon
-      } else if (predLower.includes(match.away?.toLowerCase())) {
+      } else if (predLower.includes(awayLower)) {
         correct = awayWon
       } else {
-        // Can't determine — skip
         continue
       }
 
-      // Import resolve function
-      const { resolvePrediction } = await import('../lib/state')
-      currentState = resolvePrediction(currentState, pred.id, match.result, correct)
-      resolvedNames.push(`#${pred.id} ${pred.match} → ${match.result}`)
+      // Update state directly — no dynamic import
+      const updatedPreds = currentState.predictions.map(p => {
+        if (p.id !== pred.id || p.status !== 'pending') return p
+        return { ...p, result: match.result, status: correct ? 'correct' : 'wrong', resolvedDate: new Date().toISOString() }
+      })
+
+      const newStats = { ...currentState.stats }
+      newStats.pending = Math.max(0, newStats.pending - 1)
+      if (correct) newStats.correct += 1
+      else         newStats.wrong   += 1
+      const total = newStats.correct + newStats.wrong
+      newStats.winRate = total > 0 ? `${Math.round((newStats.correct / total) * 100)}%` : '0%'
+
+      const newGrudgeLog = correct ? currentState.grudgeLog : [
+        ...currentState.grudgeLog,
+        { predictionId: pred.id, match: pred.match, prediction: pred.prediction, actual: match.result, date: new Date().toLocaleDateString() }
+      ]
+
+      currentState = { ...currentState, predictions: updatedPreds, stats: newStats, grudgeLog: newGrudgeLog }
+      resolvedNames.push({ id: pred.id, match: pred.match, result: match.result, correct, prediction: pred.prediction })
     }
 
     if (resolvedNames.length === 0) {
-      toast('No predictions matched completed matches yet.')
+      toast('No predictions matched completed matches yet. Try making predictions that include team names.')
       setAutoResolving(false)
       return
     }
 
-    // Save updated state
+    // Save to Walrus
     const saved = await autoSave(currentState)
 
-    // Generate roast/praise for each resolved
-    for (const pred of appState.predictions.filter(p =>
-      resolvedNames.some(r => r.includes(`#${p.id}`))
-    )) {
-      const match = findResult(pred.prediction + ' ' + pred.match)
-      const correct = currentState.predictions.find(p => p.id === pred.id)?.status === 'correct'
-      if (correct) {
-        await praise(short, pred.prediction, currentState.stats, currentState.grudgeLog)
+    // Generate AI responses
+    for (const item of resolvedNames) {
+      if (item.correct) {
+        await praise(short, item.prediction, currentState.stats, currentState.grudgeLog)
       } else {
-        await roast(short, pred.prediction, match?.result || '', currentState.grudgeLog, currentState.stats)
+        await roast(short, item.prediction, item.result, currentState.grudgeLog, currentState.stats)
       }
     }
 
-    setResolved(resolvedNames)
+    setResolved(resolvedNames.map(r => `#${r.id} ${r.match} → ${r.result}`))
     setAutoResolving(false)
-    toast.success(`✅ Auto-resolved ${resolvedNames.length} prediction(s)!`)
+    toast.success(`⚡ Auto-resolved ${resolvedNames.length} prediction(s)!`)
   }
 
   return (
