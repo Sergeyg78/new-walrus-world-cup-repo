@@ -9,13 +9,22 @@ import {
 } from '../lib/state'
 import { getExplorerUrl, saveLocalBlobId } from '../lib/walrus'
 import toast from 'react-hot-toast'
+import { useScores } from '../hooks/useScores'
 
-const TABS = ['📝 Predict', '✅ Resolve', '💬 Hot Takes', '😤 Grudge Report', '📖 History']
+const TABS = [
+  '📝 Predict',
+  '✅ Resolve',
+  '💬 Hot Takes',
+  '😤 Grudge Report',
+  '🔴 Live Scores',
+  '📖 History',
+]
 
 export function Dashboard({ appState, setAppState, blobChain, setBlobChain }) {
   const account                = useCurrentAccount()
   const { save, saving }       = useWalrus()
   const { response, loading: roastLoading, lastType, roast, praise, debate, grudgeReport } = useRoast()
+  const { finished, live, loading: scoresLoading, error: scoresError, lastFetch, fetchScores, findResult } = useScores()
   const [tab, setTab]          = useState(0)
   const [lastBlobId, setLastBlobId] = useState(appState.blobChain?.slice(-1)[0] || '')
 
@@ -138,7 +147,22 @@ export function Dashboard({ appState, setAppState, blobChain, setBlobChain }) {
         {tab === 1 && <ResolveTab appState={appState} autoSave={autoSave} roast={roast} praise={praise} saving={saving} />}
         {tab === 2 && <HotTakesTab appState={appState} autoSave={autoSave} debate={debate} saving={saving} />}
         {tab === 3 && <GrudgeTab appState={appState} grudgeReport={grudgeReport} loading={roastLoading} />}
-        {tab === 4 && <HistoryTab appState={appState} blobChain={blobChain} />}
+        {tab === 4 && (
+          <LiveScoresTab
+            finished={finished}
+            live={live}
+            loading={scoresLoading}
+            error={scoresError}
+            lastFetch={lastFetch}
+            fetchScores={fetchScores}
+          />
+        )}
+        {tab === 5 && (
+          <HistoryTab
+            appState={appState}
+            blobChain={blobChain}
+          />
+        )}
       </div>
     </div>
   )
@@ -353,6 +377,170 @@ function GrudgeTab({ appState, grudgeReport, loading }) {
   )
 }
 
+// ══════════════════════════════════════════════════════════════════════════════
+// TAB: Live Scores + Auto-resolve
+// ══════════════════════════════════════════════════════════════════════════════
+function LiveScoresTab({
+  finished, live, loading, error, lastFetch,
+  fetchScores, appState, autoSave, roast, praise,
+  saving, findResult, short,
+}) {
+  const [autoResolving, setAutoResolving] = useState(false)
+  const [resolved, setResolved] = useState([])
+
+  // ── Auto-resolve pending predictions against real results ─────────────────
+  async function autoResolve() {
+    const pending = appState.predictions.filter(p => p.status === 'pending')
+    if (pending.length === 0) {
+      toast('No pending predictions to resolve!')
+      return
+    }
+
+    setAutoResolving(true)
+    let currentState = { ...appState }
+    const resolvedNames = []
+
+    for (const pred of pending) {
+      const match = findResult(pred.prediction + ' ' + pred.match)
+      if (!match) continue
+
+      const homeWon = match.homeGoals > match.awayGoals
+      const awayWon = match.awayGoals > match.homeGoals
+      const predLower = pred.prediction.toLowerCase()
+
+      // Simple win/draw detection
+      let correct = false
+      if (predLower.includes('draw') || predLower.includes('tie')) {
+        correct = match.homeGoals === match.awayGoals
+      } else if (predLower.includes(match.home?.toLowerCase())) {
+        correct = homeWon
+      } else if (predLower.includes(match.away?.toLowerCase())) {
+        correct = awayWon
+      } else {
+        // Can't determine — skip
+        continue
+      }
+
+      // Import resolve function
+      const { resolvePrediction } = await import('../lib/state')
+      currentState = resolvePrediction(currentState, pred.id, match.result, correct)
+      resolvedNames.push(`#${pred.id} ${pred.match} → ${match.result}`)
+    }
+
+    if (resolvedNames.length === 0) {
+      toast('No predictions matched completed matches yet.')
+      setAutoResolving(false)
+      return
+    }
+
+    // Save updated state
+    const saved = await autoSave(currentState)
+
+    // Generate roast/praise for each resolved
+    for (const pred of appState.predictions.filter(p =>
+      resolvedNames.some(r => r.includes(`#${p.id}`))
+    )) {
+      const match = findResult(pred.prediction + ' ' + pred.match)
+      const correct = currentState.predictions.find(p => p.id === pred.id)?.status === 'correct'
+      if (correct) {
+        await praise(short, pred.prediction, currentState.stats, currentState.grudgeLog)
+      } else {
+        await roast(short, pred.prediction, match?.result || '', currentState.grudgeLog, currentState.stats)
+      }
+    }
+
+    setResolved(resolvedNames)
+    setAutoResolving(false)
+    toast.success(`✅ Auto-resolved ${resolvedNames.length} prediction(s)!`)
+  }
+
+  return (
+    <div className="tab-panel">
+      <h2 className="sec-head">🔴 Live WC2026 Scores</h2>
+
+      <div className="btn-row" style={{ marginBottom: 16 }}>
+        <button
+          className="btn-primary"
+          onClick={fetchScores}
+          disabled={loading}
+        >
+          {loading ? '⏳ Fetching...' : '🔄 Refresh Scores'}
+        </button>
+        <button
+          className="btn-correct"
+          onClick={autoResolve}
+          disabled={autoResolving || saving || finished.length === 0}
+        >
+          {autoResolving ? '⏳ Auto-resolving...' : '⚡ Auto-Resolve My Predictions'}
+        </button>
+      </div>
+
+      {lastFetch && (
+        <p className="hint">Last updated: {lastFetch}</p>
+      )}
+
+      {error && (
+        <div className="pred-row" style={{ borderLeft: '3px solid #ff5252' }}>
+          ⚠️ {error}
+        </div>
+      )}
+
+      {/* Auto-resolved results */}
+      {resolved.length > 0 && (
+        <>
+          <h3 className="sec-head" style={{ marginTop: 20 }}>
+            ✅ Just Auto-Resolved
+          </h3>
+          {resolved.map((r, i) => (
+            <div className="pred-row badge-correct" key={i}>
+              ⚡ {r}
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Live matches */}
+      {live.length > 0 && (
+        <>
+          <h3 className="sec-head" style={{ marginTop: 20, color: '#ff5252' }}>
+            🔴 Live Right Now
+          </h3>
+          {live.map(m => (
+            <div className="pred-row" key={m.id} style={{ borderLeft: '3px solid #ff5252' }}>
+              <span style={{ color: '#ff5252', fontWeight: 700 }}>LIVE</span>
+              <span className="pred-text">
+                <strong>{m.home}</strong> {m.homeGoals} - {m.awayGoals}{' '}
+                <strong>{m.away}</strong>
+              </span>
+              <span className="pred-date">{m.group}</span>
+            </div>
+          ))}
+        </>
+      )}
+
+      {/* Finished matches */}
+      <h3 className="sec-head" style={{ marginTop: 20 }}>
+        ✅ Completed Matches ({finished.length})
+      </h3>
+
+      {finished.length === 0 && !loading && (
+        <p className="empty">No completed matches yet — click Refresh.</p>
+      )}
+
+      {finished.map(m => (
+        <div className="pred-row" key={m.id}>
+          <span className="badge badge-correct">FT</span>
+          <span className="pred-text">
+            <strong>{m.home}</strong> {m.homeGoals} - {m.awayGoals}{' '}
+            <strong>{m.away}</strong>
+          </span>
+          <span className="pred-date">{m.date} · {m.group}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // ── Tab: History ──────────────────────────────────────────────────────────────
 function HistoryTab({ appState, blobChain }) {
   const timeline = [
@@ -375,7 +563,7 @@ function HistoryTab({ appState, blobChain }) {
       <h2 className="sec-head">📖 Full Session History</h2>
 
       {/* Blob chain */}
-      {blobChain.length > 0 && (
+      {blobChain?.length > 0 && (
         <details className="blob-chain-details">
           <summary>🔗 Blob Chain ({blobChain.length} snapshots on Walrus Mainnet)</summary>
           <div className="blob-chain-list">

@@ -125,24 +125,60 @@ export function recalcStats(state) {
   }
 }
 
-// ── WC2026 match data ─────────────────────────────────────────────────────────
+// ── Real WC2026 Groups (correct as of June 18, 2026) ─────────────────────────
+export const WC2026_GROUPS = {
+  'Group A': ['Mexico 🇲🇽', 'South Africa 🇿🇦', 'South Korea 🇰🇷', 'Czechia 🇨🇿'],
+  'Group B': ['Canada 🇨🇦', 'Bosnia-Herzegovina 🇧🇦', 'Qatar 🇶🇦', 'Switzerland 🇨🇭'],
+  'Group C': ['Brazil 🇧🇷', 'Haiti 🇭🇹', 'Scotland 🇴󠁧󠁢󠁳󠁣󠁴󠁿', 'Morocco 🇲🇦'],
+  'Group D': ['USA 🇺🇸', 'Paraguay 🇵🇾', 'Australia 🇦🇺', 'Türkiye 🇹🇷'],
+  'Group E': ['Spain 🇪🇸', 'unknown', 'unknown', 'unknown'],
+  'Group F': ['Argentina 🇦🇷', 'unknown', 'unknown', 'unknown'],
+  'Group G': ['Germany 🇩🇪', 'unknown', 'unknown', 'unknown'],
+  'Group H': ['England 🏴󠁧󠁢󠁥󠁮󠁧󠁿', 'unknown', 'unknown', 'unknown'],
+  'Group I': ['France 🇫🇷', 'Senegal 🇸🇳', 'Iraq 🇮🇶', 'Norway 🇳🇴'],
+  'Group J': ['unknown', 'unknown', 'unknown', 'unknown'],
+  'Group K': ['Portugal 🇵🇹', 'DR Congo 🇨🇩', 'Uzbekistan 🇺🇿', 'Colombia 🇨🇴'],
+  'Group L': ['unknown', 'unknown', 'unknown', 'unknown'],
+}
+
+// ── Real results so far (June 11-18, 2026) ───────────────────────────────────
+export const COMPLETED_MATCHES = [
+  { match: 'Mexico vs South Africa (Group A)',    result: 'Mexico 2-0 South Africa',    date: 'Jun 11' },
+  { match: 'South Korea vs Czechia (Group A)',    result: 'South Korea 2-1 Czechia',    date: 'Jun 11' },
+  { match: 'Canada vs Bosnia-Herzegovina (Group B)', result: 'Canada 1-1 Bosnia-Herzegovina', date: 'Jun 12' },
+  { match: 'USA vs Paraguay (Group D)',           result: 'USA 4-1 Paraguay',           date: 'Jun 12' },
+  { match: 'Australia vs Türkiye (Group D)',      result: 'Australia 2-0 Türkiye',      date: 'Jun 13' },
+  { match: 'Scotland vs Haiti (Group C)',         result: 'Scotland W 4-1 Haiti',       date: 'Jun 13' },
+  { match: 'Germany vs Japan (Group D)',          result: 'Germany 2-2 Japan',          date: 'Jun 14' },
+  { match: 'France vs Iraq (Group I)',            result: 'France 4-1 Iraq',            date: 'Jun 17' },
+  { match: 'Portugal vs DR Congo (Group K)',      result: 'Portugal 1-1 DR Congo',      date: 'Jun 17' },
+]
+
+// ── Upcoming fixtures (June 19+) ──────────────────────────────────────────────
 export const NOTABLE_MATCHES = [
-  'USA vs Ecuador (Group A)',
-  'Argentina vs Chile (Group B)',
-  'Brazil vs Colombia (Group C)',
-  'England vs Netherlands (Group D)',
-  'France vs Belgium (Group E)',
-  'Spain vs Portugal (Group F)',
-  'Germany vs Japan (Group G)',
-  'Italy vs Australia (Group H)',
-  'Senegal vs Cameroon (Group I)',
-  'South Korea vs Iran (Group J)',
-  'World Cup Final',
+  // Today June 19
+  'USA vs Australia (Group D) — Jun 19',
+  'Scotland vs Morocco (Group C) — Jun 19',
+  'Brazil vs Haiti (Group C) — Jun 19',
+  'Türkiye vs Paraguay (Group D) — Jun 19',
+  // Upcoming group stage
+  'Mexico vs South Korea (Group A) — Jun 21',
+  'Canada vs Qatar (Group B) — Jun 21',
+  'France vs Senegal (Group I) — Jun 23',
+  'Portugal vs Uzbekistan (Group K) — Jun 23',
+  'Spain vs Group E match',
+  'Argentina vs Group F match',
+  'Germany vs Group G match',
+  'England vs Group H match',
+  // Knockout stage (upcoming)
+  'Round of 32',
+  'Round of 16',
+  'Quarter Final',
   'Semi Final 1',
   'Semi Final 2',
-  'Quarter Final 1',
-  'Quarter Final 2',
-  'Round of 16',
+  'World Cup Final — Jul 19',
+  // Custom
+  'Custom match...',
 ]
 
 export const WC2026_INFO = {
@@ -151,5 +187,6 @@ export const WC2026_INFO = {
   dates:   'Jun 11 – Jul 19, 2026',
   teams:   48,
   matches: 104,
-  final:   'MetLife Stadium, New York/New Jersey',
-  }
+  final:   'MetLife Stadium, New York/New Jersey — Jul 19',
+  status:  '🔴 LIVE — Group Stage Week 2',
+}
