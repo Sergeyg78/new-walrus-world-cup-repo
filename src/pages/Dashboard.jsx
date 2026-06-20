@@ -155,6 +155,13 @@ export function Dashboard({ appState, setAppState, blobChain, setBlobChain }) {
             error={scoresError}
             lastFetch={lastFetch}
             fetchScores={fetchScores}
+            appState={appState}
+            autoSave={autoSave}
+            roast={roast}
+            praise={praise}
+            saving={saving}
+            findResult={findResult}
+            short={short}
           />
         )}
         {tab === 5 && (
