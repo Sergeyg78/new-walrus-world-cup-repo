@@ -411,13 +411,26 @@ function LiveScoresTab({
     let currentState = { ...appState, predictions: [...appState.predictions] }
 
     for (const pred of pending) {
-      const searchText = `${pred.prediction} ${pred.match}`.toLowerCase()
-      const match = finished.find(m => {
-        const home = (m.home || '').toLowerCase()
-        const away = (m.away || '').toLowerCase()
-        return searchText.includes(home) || searchText.includes(away)
-      })
-      if (!match) continue
+  const searchText = `${pred.prediction} ${pred.match}`.toLowerCase()
+  
+  // Must match BOTH teams to avoid false positives
+  const match = finished.find(m => {
+    const home = (m.home || '').toLowerCase()
+    const away = (m.away || '').toLowerCase()
+    
+    // Require both team names to appear in the prediction text
+    const hasBoth = searchText.includes(home) && searchText.includes(away)
+    if (!hasBoth) return false
+    
+    // Also check the match date is not in the future
+    const matchDate = new Date(m.date)
+    const today = new Date()
+    today.setHours(23, 59, 59, 999)
+    if (matchDate > today) return false
+    
+    return true
+  })
+  if (!match) continue
 
       const predLower  = pred.prediction.toLowerCase()
       const homeLower  = (match.home || '').toLowerCase()
